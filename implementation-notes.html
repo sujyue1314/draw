@@ -215,7 +215,8 @@
 
 <h2>PR 6：actionExecutor 纯函数执行器</h2>
 <div class="pr">
-  <strong>状态：</strong> ⏳ PR 已创建，等待合并
+  <strong>状态：</strong> ✅ 已合并到 main<br>
+  <strong>PR：</strong> <a href="https://github.com/sujyue1314/draw/pull/4">#4</a>
 </div>
 
 <h3>设计决策</h3>
@@ -252,8 +253,41 @@
   使用下划线前缀避免 TS6133 错误。PR 7 编排层实现后会移除下划线。
 </div>
 
+<h2>PR 7：useVoiceCommand 编排层</h2>
+<div class="pr">
+  <strong>状态：</strong> ⏳ PR 已创建，等待合并
+</div>
+
+<h3>设计决策</h3>
+
+<div class="decision">
+  <strong>1. speakWithPause 统一管理 TTS 生命周期</strong><br>
+  遵循 V1.0 踩坑 3.1：TTS 开始前 setShouldListen(false) + setIsSystemSpeaking(true)，
+  TTS 结束后延迟 1.5 秒才恢复。绝对不在 finally 块中清除 isSystemSpeaking。
+  这确保了 TTS 播报期间 STT 不会捕获系统语音导致循环执行。
+</div>
+
+<div class="decision">
+  <strong>2. ExecutorCtx 每次调用时从 stores 构建</strong><br>
+  buildCtx() 在 handleVoiceCommand 内部调用，确保读取的是最新 store 状态。
+  不在 hook 初始化时缓存 ctx，避免闭包捕获过期状态。
+</div>
+
+<div class="decision">
+  <strong>3. create_canvas / switch_canvas 在编排层处理</strong><br>
+  actionExecutor 的 handleCreateCanvas 只做防抖检查和返回 reply，
+  实际的 canvasStore.createCanvas() 调用在 useVoiceCommand 中执行。
+  这分离了"状态计算"和"状态变更"的职责。
+</div>
+
+<div class="decision">
+  <strong>4. interrupt 方法</strong><br>
+  提供 interrupt() 用于打断当前 TTS 播报并立即恢复监听。
+  清除延迟计时器、取消 speechSynthesis、重置 isSystemSpeaking。
+</div>
+
 <hr>
-<p><em>最后更新：PR 6 已创建</em></p>
+<p><em>最后更新：PR 7 已创建</em></p>
 
 </body>
 </html>
