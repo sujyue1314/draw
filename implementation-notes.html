@@ -87,8 +87,51 @@
   VoiceIndicator 是否应该被 TopBar 引用，还是保留为独立组件供后续使用？
 </div>
 
+<h2>PR 2：Zustand stores</h2>
+<div class="pr">
+  <strong>状态：</strong> ✅ 已合并到 main<br>
+  <strong>分支：</strong> feat/stores → main
+</div>
+
+<h3>设计决策</h3>
+
+<div class="decision">
+  <strong>1. canvasStore 使用函数式更新</strong><br>
+  所有 Zustand store 方法使用 <code>set((state) => ...)</code> 函数式更新，确保并发操作不会丢失状态。
+  特别是 <code>saveToHistory</code> + <code>updateCanvas</code> 连续调用时，函数式更新保证读到最新值。
+</div>
+
+<div class="decision">
+  <strong>2. confirmStore 回调管理</strong><br>
+  <code>showConfirm()</code> 接收 <code>onConfirm</code> 回调并存储在 store 中。
+  <code>confirm()</code> / <code>cancel()</code> 执行回调后自动清理状态。
+  使用 <code>(() => void) | null</code> 类型，避免 undefined 导致的调用风险。
+</div>
+
+<div class="decision">
+  <strong>3. HistorySnapshot 包含完整画布状态</strong><br>
+  快照保存 objects、imageUrl、remoteImageUrl 三个字段。
+  undo/redo 时恢复完整状态，不仅仅是 objects 列表。
+</div>
+
+<h3>偏差</h3>
+
+<div class="deviation">
+  <strong>1. PR 通过本地合并推送</strong><br>
+  由于 gh CLI 未安装，且 MCP GitHub 工具（vjrm300 账号）无权操作 sujyue1314/draw，
+  PR 2 通过本地 merge 推送到 main。建议安装 gh CLI 以支持标准 PR 流程：<code>winget install GitHub.cli</code>
+</div>
+
+<h3>未决问题</h3>
+
+<div class="question">
+  <strong>1. undoStack 是否需要大小限制？</strong><br>
+  当前 undoStack 无上限。如果用户频繁操作（如连续编辑图片），undoStack 可能占用大量内存。
+  是否需要限制为最近 N 次（如 20 次）？
+</div>
+
 <hr>
-<p><em>最后更新：PR 1 完成</em></p>
+<p><em>最后更新：PR 2 完成</em></p>
 
 </body>
 </html>
