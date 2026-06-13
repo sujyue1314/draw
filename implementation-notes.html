@@ -181,7 +181,7 @@
 
 <h2>PR 5：LLM 指令解析</h2>
 <div class="pr">
-  <strong>状态：</strong> ⏳ PR 已创建，等待合并<br>
+  <strong>状态：</strong> ✅ 已合并到 main<br>
   <strong>PR：</strong> <a href="https://github.com/sujyue1314/draw/pull/3">#3</a>
 </div>
 
@@ -213,8 +213,47 @@
   是否需要改为配置化？
 </div>
 
+<h2>PR 6：actionExecutor 纯函数执行器</h2>
+<div class="pr">
+  <strong>状态：</strong> ⏳ PR 已创建，等待合并
+</div>
+
+<h3>设计决策</h3>
+
+<div class="decision">
+  <strong>1. 纯函数 + ExecutorCtx 依赖注入</strong><br>
+  所有 handler 是 async 函数，通过 ExecutorCtx 接口访问 store，无 React 依赖。
+  这使得 actionExecutor 可以独立测试，不依赖 React 渲染环境。
+</div>
+
+<div class="decision">
+  <strong>2. saveToHistory 在操作前调用</strong><br>
+  遵循 V1.0 踩坑（3.2）：所有写操作前调用 saveToHistory()，确保撤销恢复的是操作前状态。
+  delete_object 和 modify_object 都在修改 objects 数组前保存快照。
+</div>
+
+<div class="decision">
+  <strong>3. delete_object 两种策略</strong><br>
+  删除后有剩余对象 → editImage（保持场景一致性）；无剩余对象 → generateImage（空场景）。
+  这避免了对空场景使用 editImage 可能导致的不准确结果。
+</div>
+
+<div class="decision">
+  <strong>4. 画布创建/切换延迟到编排层</strong><br>
+  handleCreateCanvas 和 handleSwitchCanvas 只返回 reply，实际的 canvasStore.createCanvas /
+  switchCanvas 调用由 PR 7 的 useVoiceCommand 编排层负责。executor 只负责状态计算和 API 调用。
+</div>
+
+<h3>踩坑记录</h3>
+
+<div class="deviation">
+  <strong>1. _ctx 前缀处理未使用参数</strong><br>
+  handleCreateCanvas 和 handleSwitchCanvas 的 ctx 参数在 PR 6 中未使用（需要编排层配合），
+  使用下划线前缀避免 TS6133 错误。PR 7 编排层实现后会移除下划线。
+</div>
+
 <hr>
-<p><em>最后更新：PR 5 已创建</em></p>
+<p><em>最后更新：PR 6 已创建</em></p>
 
 </body>
 </html>
