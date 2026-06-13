@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useCanvasStore } from '../../stores/canvasStore';
+import { useCurrentCanvas } from '../../hooks/useCurrentCanvas';
 import { useVoiceStore } from '../../stores/voiceStore';
 import type { VoiceStatus } from '../../stores/voiceStore';
 import type { AspectRatio } from '../../types/canvas';
@@ -14,7 +15,7 @@ const STATUS_MAP: Record<VoiceStatus, { label: string; color: string }> = {
 const RATIOS: AspectRatio[] = ['16:9', '9:16', '1:1', '4:3', '3:4'];
 
 export function TopBar() {
-  const canvas = useCanvasStore((s) => s.getCurrentCanvas());
+  const canvas = useCurrentCanvas();
   const updateCanvas = useCanvasStore((s) => s.updateCanvas);
   const saveToHistory = useCanvasStore((s) => s.saveToHistory);
   const undo = useCanvasStore((s) => s.undo);

@@ -1,7 +1,7 @@
-import { useCanvasStore } from '../../stores/canvasStore';
+import { useCurrentCanvas } from '../../hooks/useCurrentCanvas';
 
 export function HistoryList() {
-  const canvas = useCanvasStore((s) => s.getCurrentCanvas());
+  const canvas = useCurrentCanvas();
   const undoStack = canvas.undoStack;
   const redoStack = canvas.redoStack;
 
@@ -15,7 +15,6 @@ export function HistoryList() {
         <p className="text-xs text-text-muted">暂无历史</p>
       ) : (
         <ul className="space-y-1">
-          {/* redoStack（灰色，可重做） */}
           {[...redoStack].reverse().map((snap, i) => (
             <li
               key={`redo-${i}`}
@@ -26,13 +25,11 @@ export function HistoryList() {
             </li>
           ))}
 
-          {/* 当前状态 */}
           <li className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-accent font-medium">
             <span className="text-[10px]">●</span>
             <span>当前</span>
           </li>
 
-          {/* undoStack（可撤销，从新到旧） */}
           {[...undoStack].reverse().map((snap, i) => (
             <li
               key={`undo-${i}`}
