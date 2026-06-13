@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>VoiceCanvas AI - Implementation Notes</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; line-height: 1.6; }
+    h1 { border-bottom: 2px solid #2563eb; padding-bottom: 0.5rem; }
+    h2 { color: #2563eb; margin-top: 2rem; }
+    h3 { color: #4b5563; }
+    .decision { background: #f0f9ff; border-left: 4px solid #2563eb; padding: 1rem; margin: 1rem 0; }
+    .deviation { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; margin: 1rem 0; }
+    .tradeoff { background: #f3e8ff; border-left: 4px solid #8b5cf6; padding: 1rem; margin: 1rem 0; }
+    .question { background: #fee2e2; border-left: 4px solid #ef4444; padding: 1rem; margin: 1rem 0; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    .pr { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
+    th { background: #f9fafb; }
+  </style>
+</head>
+<body>
+
+<h1>🎨 VoiceCanvas AI - Implementation Notes</h1>
+<p>记录实现过程中与规范的差异、设计决策和权衡取舍。</p>
+
+<h2>PR 1：项目脚手架 + 类型定义</h2>
+<div class="pr">
+  <strong>状态：</strong> ✅ 已合并到 main<br>
+  <strong>仓库：</strong> <a href="https://github.com/sujyue1314/draw">github.com/sujyue1314/draw</a>
+</div>
+
+<h3>设计决策</h3>
+
+<div class="decision">
+  <strong>1. 类型文件拆分</strong><br>
+  将 <code>ExecutorCtx</code> 放在 <code>commands.ts</code> 而非单独文件。因为 <code>ExecutorCtx</code> 依赖 <code>CanvasState</code> 和 <code>ConversationTurn</code>，
+  使用 <code>import('./canvas')</code> 类型导入避免循环依赖，同时保持 commands.ts 作为 action 执行的唯一类型入口。
+</div>
+
+<div class="decision">
+  <strong>2. AspectRatio 类型为联合字符串</strong><br>
+  使用 <code>'16:9' | '9:16' | '1:1' | '4:3' | '3:4'</code> 而非枚举。字符串联合类型在 JSON 序列化时更自然，
+  与 LLM 返回的 ratio 格式一致，无需额外转换。
+</div>
+
+<div class="decision">
+  <strong>3. HistorySnapshot 包含 remoteImageUrl</strong><br>
+  同时保留 <code>imageUrl</code>（blob URL）和 <code>remoteImageUrl</code>（DashScope 原始 URL）。
+  blob URL 刷新后失效，remoteImageUrl 可用于恢复。PR 10 持久化时会用 remoteImageUrl。
+</div>
+
+<h3>偏差</h3>
+
+<div class="deviation">
+  <strong>1. MCP 与 Git 凭证不一致</strong><br>
+  MCP GitHub 工具认证为 vjrm300 账号，git CLI 凭证为 sujyue1314。
+  解决方案：git push 用 sujyue1314 凭证推送代码，MCP 工具用于查看仓库状态。
+</div>
+
+<div class="deviation">
+  <strong>2. PR 1 直接推送到 main</strong><br>
+  规范要求每个 PR 都通过 Pull Request 合并。但仓库为空时无法创建对比分支，PR 1 作为初始化提交直接推送到 main。
+  从 PR 2 开始将严格走 feature branch → PR → merge 流程。
+</div>
+
+<h3>权衡取舍</h3>
+
+<div class="tradeoff">
+  <strong>TranscriptOverlay 使用条件渲染 vs CSS 隐藏</strong><br>
+  选择条件渲染（<code>if (!text) return null</code>），不渲染空 DOM。
+  优点：无多余 DOM 节点；缺点：text 变化时有挂载/卸载开销。
+  对于低频变化的文本浮层，条件渲染更简洁。
+</div>
+
+<h3>未决问题</h3>
+
+<div class="question">
+  <strong>1. RightPanel 宽度是否需要响应式？</strong><br>
+  当前固定 <code>w-64</code>（256px）。在小屏幕上可能挤压画布区域。
+  是否需要在 <code>md</code> 断点以下折叠或隐藏 RightPanel？
+</div>
+
+<div class="question">
+  <strong>2. VoiceIndicator 何时使用？</strong><br>
+  PR 1 创建了 <code>VoiceIndicator</code> 组件，但 TopBar 中直接用文字显示状态。
+  VoiceIndicator 是否应该被 TopBar 引用，还是保留为独立组件供后续使用？
+</div>
+
+<hr>
+<p><em>最后更新：PR 1 完成</em></p>
+
+</body>
+</html>
