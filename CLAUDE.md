@@ -2,6 +2,11 @@
 
 语音驱动的 AI 绘图助手。
 
+## 仓库
+
+- GitHub: https://github.com/sujyue1314/draw
+- 推送方式: `git push`（git 凭证为 sujyue1314）
+
 ## 技术栈
 
 - Vite 8 + React 19 + TypeScript
@@ -34,6 +39,60 @@ src/
     ├── voice/      # 语音相关
     ├── panel/      # 右侧面板
     └── ui/         # 通用 UI
+```
+
+## PR 提交规范
+
+### 原则
+
+1. **每个 PR 只做一件事**：单一功能，鼓励小粒度
+2. **合并后主分支可运行**：任意时间 `pnpm build` 通过
+3. **PR 标题格式**：`<type>: <一句话说明>`
+
+### PR 描述模板
+
+每个 PR 必须包含以下内容：
+
+```markdown
+## 功能描述
+说明该功能的作用与使用方式
+
+## 实现思路
+简要说明技术选型或核心实现逻辑
+
+## 测试方式
+如何验证该功能正常运行
+```
+
+### Commit 格式
+
+```
+<type>: <description>
+```
+
+类型：feat, fix, refactor, docs, test, chore, perf, ci
+
+### 推送流程
+
+```bash
+# 1. 创建 feature 分支
+git checkout -b feat/xxx
+
+# 2. 开发 + 验证构建
+pnpm build
+
+# 3. 提交
+git add -A
+git commit -m "feat: xxx"
+
+# 4. 推送 feature 分支
+git push -u origin feat/xxx
+
+# 5. 创建 PR（从 feat/xxx 合入 main）
+#    使用 GitHub 网页或 gh CLI
+
+# 6. 合并后切回 main
+git checkout main && git pull
 ```
 
 ## 关键设计决策
