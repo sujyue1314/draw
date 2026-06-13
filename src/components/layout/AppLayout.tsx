@@ -11,14 +11,16 @@ export function AppLayout() {
       <TopBar />
 
       <div className="flex-1 flex min-h-0">
-        <div className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 flex flex-col min-w-0">
           <CanvasArea />
           <CanvasTabs />
-        </div>
+        </main>
         <RightPanel />
       </div>
 
-      <VoiceControlBar />
+      <footer>
+        <VoiceControlBar />
+      </footer>
       <ConfirmDialog />
     </div>
   );

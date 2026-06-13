@@ -7,12 +7,18 @@ export function CanvasTabs() {
   const createCanvas = useCanvasStore((s) => s.createCanvas);
 
   return (
-    <div className="h-10 flex items-center gap-1 px-4 bg-panel-bg border-t border-panel-border shrink-0 overflow-x-auto">
+    <nav
+      className="h-10 flex items-center gap-1 px-4 bg-panel-bg border-t border-panel-border shrink-0 overflow-x-auto"
+      role="tablist"
+      aria-label="画布列表"
+    >
       {canvases.map((c) => {
         const isActive = c.id === currentCanvasId;
         return (
           <button
             key={c.id}
+            role="tab"
+            aria-selected={isActive}
             onClick={() => switchCanvas(c.id)}
             className={`
               px-3 py-1 text-xs font-medium rounded-md transition-colors shrink-0
@@ -31,10 +37,10 @@ export function CanvasTabs() {
       <button
         onClick={createCanvas}
         className="px-2 py-1 text-xs text-text-muted hover:text-accent hover:bg-surface-hover rounded-md transition-colors shrink-0 ml-1"
-        title="新建画布"
+        aria-label="新建画布"
       >
         +
       </button>
-    </div>
+    </nav>
   );
 }
