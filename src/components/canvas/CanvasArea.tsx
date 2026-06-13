@@ -1,9 +1,9 @@
-import { useCanvasStore } from '../../stores/canvasStore';
+import { useCurrentCanvas } from '../../hooks/useCurrentCanvas';
 import { TranscriptOverlay } from '../voice/TranscriptOverlay';
 import { useVoiceStore } from '../../stores/voiceStore';
 
 export function CanvasArea() {
-  const canvas = useCanvasStore((s) => s.getCurrentCanvas());
+  const canvas = useCurrentCanvas();
   const interimTranscript = useVoiceStore((s) => s.interimTranscript);
   const transcript = useVoiceStore((s) => s.transcript);
 
@@ -19,7 +19,6 @@ export function CanvasArea() {
       role="img"
       aria-label={canvas.imageUrl ? imageAlt : '空白画布，等待语音指令'}
     >
-      {/* 生成中 Loading 遮罩 */}
       {canvas.isGenerating && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-canvas-bg/80 backdrop-blur-sm" role="status" aria-label="正在生成图片">
           <div className="w-10 h-10 border-2 border-panel-border border-t-accent rounded-full animate-spin" />
@@ -27,7 +26,6 @@ export function CanvasArea() {
         </div>
       )}
 
-      {/* 图片显示 */}
       {canvas.imageUrl ? (
         <img
           src={canvas.imageUrl}
@@ -38,7 +36,6 @@ export function CanvasArea() {
           draggable={false}
         />
       ) : (
-        /* 空状态 */
         <div className="flex flex-col items-center gap-4 select-none">
           <div className="w-20 h-20 rounded-2xl bg-surface flex items-center justify-center">
             <svg
@@ -57,17 +54,12 @@ export function CanvasArea() {
             </svg>
           </div>
           <div className="text-center">
-            <p className="text-text-secondary text-sm font-medium">
-              说出你的绘图指令
-            </p>
-            <p className="text-text-muted text-xs mt-1">
-              例如 &ldquo;生成一只小猫坐在月亮上&rdquo;
-            </p>
+            <p className="text-text-secondary text-sm font-medium">说出你的绘图指令</p>
+            <p className="text-text-muted text-xs mt-1">例如 &ldquo;生成一只小猫坐在月亮上&rdquo;</p>
           </div>
         </div>
       )}
 
-      {/* 识别文本浮层 */}
       <TranscriptOverlay text={displayText} />
     </div>
   );

@@ -1,8 +1,7 @@
-import { useCanvasStore } from '../../stores/canvasStore';
+import { useCurrentCanvas } from '../../hooks/useCurrentCanvas';
 
 export function ComponentList() {
-  const canvas = useCanvasStore((s) => s.getCurrentCanvas());
-  const objects = canvas.objects;
+  const objects = useCurrentCanvas().objects;
 
   return (
     <div className="flex-1 p-3 overflow-y-auto min-h-0">

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useVoiceStore } from '../../stores/voiceStore';
 import type { VoiceStatus } from '../../stores/voiceStore';
 
@@ -8,7 +9,7 @@ const COLOR_MAP: Record<VoiceStatus, string> = {
   speaking: 'bg-status-speak',
 };
 
-export function VoiceIndicator() {
+export const VoiceIndicator = memo(function VoiceIndicator() {
   const status = useVoiceStore((s) => s.status);
   const color = COLOR_MAP[status];
   const isPulsing = status === 'listening' || status === 'processing';
@@ -20,4 +21,4 @@ export function VoiceIndicator() {
       />
     </div>
   );
-}
+});

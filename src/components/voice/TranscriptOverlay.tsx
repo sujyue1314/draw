@@ -1,8 +1,10 @@
+import { memo } from 'react';
+
 interface TranscriptOverlayProps {
   text?: string;
 }
 
-export function TranscriptOverlay({ text }: TranscriptOverlayProps) {
+export const TranscriptOverlay = memo(function TranscriptOverlay({ text }: TranscriptOverlayProps) {
   if (!text) return null;
 
   return (
@@ -14,4 +16,4 @@ export function TranscriptOverlay({ text }: TranscriptOverlayProps) {
       </div>
     </div>
   );
-}
+});
