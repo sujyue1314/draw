@@ -13,6 +13,8 @@ interface ChatCompletionOptions {
   response_format?: { type: 'json_object' | 'text' };
 }
 
+const FETCH_TIMEOUT_MS = 30_000;
+
 /**
  * DashScope OpenAI-compatible chat completion
  */
@@ -35,24 +37,37 @@ export async function chatCompletion(
     body.response_format = response_format;
   }
 
-  const response = await fetch(`${BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${API_KEY}`,
-    },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Chat API error ${response.status}: ${error}`);
-  }
+  try {
+    const response = await fetch(`${BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('Chat API returned empty content');
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Chat API error ${response.status}: ${error}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error('Chat API returned empty content');
+    }
+    return content;
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Chat API 请求超时（30s）');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  return content;
 }
