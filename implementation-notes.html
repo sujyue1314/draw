@@ -289,7 +289,8 @@
 
 <h2>PR 8：UI 完善</h2>
 <div class="pr">
-  <strong>状态：</strong> ⏳ PR 已创建，等待合并
+  <strong>状态：</strong> ✅ 已合并到 main<br>
+  <strong>PR：</strong> <a href="https://github.com/sujyue1314/draw/pull/6">#6</a>
 </div>
 
 <h3>设计决策</h3>
@@ -318,8 +319,34 @@
   ConfirmDialog 放在 AppLayout 最外层，由 confirmStore.isOpen 控制显隐。
 </div>
 
+<h2>PR 9：多画布 + 比例切换 + 撤销/重做</h2>
+<div class="pr">
+  <strong>状态：</strong> ⏳ PR 已创建，等待合并
+</div>
+
+<h3>设计决策</h3>
+
+<div class="decision">
+  <strong>1. 双路径操作：语音 + 按钮</strong><br>
+  撤销/重做/比例切换同时支持语音指令和 UI 按钮。语音路径：VoiceControlBar → parseVoiceCommand → executeAction → ctx.updateCanvas。
+  按钮路径：TopBar → canvasStore.undo()/redo()/updateCanvas()。两条路径最终修改同一个 Zustand store，状态一致。
+</div>
+
+<div class="decision">
+  <strong>2. TopBar 添加操作控件</strong><br>
+  在 TopBar 中间区域添加撤销/重做按钮（禁用态 = 灰色半透明），右侧添加比例下拉选择器。
+  比例切换前调用 saveToHistory()，保持撤销链完整。
+</div>
+
+<div class="decision">
+  <strong>3. 核心逻辑已在前序 PR 实现</strong><br>
+  多画布（canvasStore.createCanvas/switchCanvas）、撤销/重做（canvasStore.undo/redo）、
+  比例切换（actionExecutor.handleChangeRatio）的核心逻辑在 PR 2/6 中已实现。
+  PR 9 的重点是补齐 UI 控件并验证端到端流程。
+</div>
+
 <hr>
-<p><em>最后更新：PR 8 已创建</em></p>
+<p><em>最后更新：PR 9 已创建</em></p>
 
 </body>
 </html>
