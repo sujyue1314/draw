@@ -321,7 +321,8 @@
 
 <h2>PR 9：多画布 + 比例切换 + 撤销/重做</h2>
 <div class="pr">
-  <strong>状态：</strong> ⏳ PR 已创建，等待合并
+  <strong>状态：</strong> ✅ 已合并到 main<br>
+  <strong>PR：</strong> <a href="https://github.com/sujyue1314/draw/pull/7">#7</a>
 </div>
 
 <h3>设计决策</h3>
@@ -345,8 +346,43 @@
   PR 9 的重点是补齐 UI 控件并验证端到端流程。
 </div>
 
+<h2>PR 10：状态持久化 + 文档</h2>
+<div class="pr">
+  <strong>状态：</strong> ⏳ PR 已创建，等待合并
+</div>
+
+<h3>设计决策</h3>
+
+<div class="decision">
+  <strong>1. Zustand persist + 自定义 merge</strong><br>
+  使用 zustand/middleware 的 persist 中间件，localStorage 存储。
+  partialize 只持久化 canvases 和 currentCanvasId。
+  merge 函数在恢复时调用 sanitizeCanvas 清理 blob URL、isGenerating、undoStack/redoStack。
+</div>
+
+<div class="decision">
+  <strong>2. remoteImageUrl 保留策略</strong><br>
+  DashScope 图片 URL 有效期约 24 小时，持久化后刷新页面仍可显示。
+  blob URL（imageUrl）在页面刷新后失效，persist 时置为 null。
+  用户可通过 remoteImageUrl 重新 fetch 恢复图片（如需要）。
+</div>
+
+<div class="decision">
+  <strong>3. undoStack/redoStack 不持久化</strong><br>
+  历史快照引用 blob URL，刷新后失效。persist 时清空，避免恢复无效状态。
+  用户刷新后从当前状态重新开始操作。
+</div>
+
+<h3>文档清单</h3>
+<ul>
+  <li><code>docs/design.md</code> — 架构概览、核心分层、关键设计决策、数据流</li>
+  <li><code>docs/commands.md</code> — 12 个 intent 说明、关键词规则、LLM 返回格式</li>
+  <li><code>docs/demo.md</code> — 演示脚本（基础操作、手动操作、边界情况）</li>
+  <li><code>CLAUDE.md</code> — 更新项目结构、关键设计、文档链接</li>
+</ul>
+
 <hr>
-<p><em>最后更新：PR 9 已创建</em></p>
+<p><em>最后更新：PR 10 已创建</em></p>
 
 </body>
 </html>

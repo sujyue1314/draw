@@ -10,10 +10,10 @@
 ## 技术栈
 
 - Vite 8 + React 19 + TypeScript
-- Zustand 5（状态管理）
+- Zustand 5（状态管理 + persist 持久化）
 - Tailwind CSS 4（via @tailwindcss/vite）
 - DashScope API（qwen-max + qwen-image-2.0-pro + wan2.7-image-pro）
-- Web Speech API（语音识别，Chrome/Edge）
+- Web Speech API（语音识别/合成，Chrome/Edge）
 
 ## 开发命令
 
@@ -27,19 +27,51 @@ pnpm preview      # 预览构建产物
 
 ```
 src/
-├── types/          # 类型定义
+├── types/          # 类型定义（canvas.ts, commands.ts）
 ├── stores/         # Zustand stores
+│   ├── canvasStore.ts    # 画布状态（多画布、undo/redo、persist）
+│   ├── voiceStore.ts     # 语音状态（识别、TTS、对话历史）
+│   └── confirmStore.ts   # 确认对话框
 ├── services/       # API 客户端和服务
+│   ├── apiClient.ts      # DashScope 通用 chat 接口
+│   ├── qwenImage.ts      # 图片生成/编辑
+│   └── qwenLLM.ts        # 指令解析 + 画面规划
 ├── executor/       # action 执行器（纯函数）
+│   └── actionExecutor.ts # 12 个 intent 处理
 ├── hooks/          # 自定义 hooks
+│   ├── useVoiceCommand.ts       # 编排层（语音→解析→执行→TTS）
+│   ├── useSpeechRecognition.ts  # STT 封装
+│   └── useSpeechSynthesis.ts    # TTS 封装
 ├── utils/          # 工具函数
+│   └── promptBuilder.ts  # prompt 拼接
 └── components/     # UI 组件
-    ├── layout/     # 页面布局
-    ├── canvas/     # 画布相关
-    ├── voice/      # 语音相关
-    ├── panel/      # 右侧面板
-    └── ui/         # 通用 UI
+    ├── layout/AppLayout.tsx
+    ├── canvas/     # CanvasArea, CanvasTabs
+    ├── voice/      # VoiceControlBar, VoiceIndicator, TranscriptOverlay
+    ├── panel/      # RightPanel, ComponentList, HistoryList
+    └── ui/         # TopBar, ConfirmDialog
 ```
+
+## 关键设计
+
+- **actionExecutor 纯函数**：无 React 依赖，通过 ExecutorCtx 访问 store
+- **TTS/STT 隔离**：speakWithPause 统一管理 isSystemSpeaking，延迟 1.5s 恢复
+- **关键词预检测**：优先于 LLM（比例/撤销/重做/查询/删除/画布）
+- **Per-canvas 历史**：每个画布独立 undoStack/redoStack
+- **操作前快照**：saveToHistory 在写操作前调用
+- **对象 ID 转换**：统一 Number() 处理 LLM 返回的 string ID
+- **画布创建防抖**：3 秒内不重复创建
+- **状态持久化**：Zustand persist + localStorage，清理 blob URL
+
+## 环境变量
+
+复制 `.env.example` 为 `.env.local`，填入 DashScope API Key。
+
+## 文档
+
+- [技术设计](docs/design.md)
+- [语音指令说明](docs/commands.md)
+- [演示脚本](docs/demo.md)
 
 ## PR 提交规范
 
@@ -50,8 +82,6 @@ src/
 3. **PR 标题格式**：`<type>: <一句话说明>`
 
 ### PR 描述模板
-
-每个 PR 必须包含以下内容：
 
 ```markdown
 ## 功能描述
@@ -75,34 +105,9 @@ src/
 ### 推送流程
 
 ```bash
-# 1. 创建 feature 分支
 git checkout -b feat/xxx
-
-# 2. 开发 + 验证构建
 pnpm build
-
-# 3. 提交
-git add -A
-git commit -m "feat: xxx"
-
-# 4. 推送 feature 分支
+git add -A && git commit -m "feat: xxx"
 git push -u origin feat/xxx
-
-# 5. 创建 PR（从 feat/xxx 合入 main）
-#    使用 GitHub 网页或 gh CLI
-
-# 6. 合并后切回 main
-git checkout main && git pull
+# 使用 gh pr create 创建 PR
 ```
-
-## 关键设计决策
-
-- actionExecutor 是纯函数，无 React 依赖
-- TTS/STT 隔离：speakWithPause 统一管理 isSystemSpeaking 生命周期
-- 撤销快照在操作前保存
-- 对象 ID 统一 Number() 转换
-- 画布创建 3 秒防抖
-
-## 环境变量
-
-复制 `.env.example` 为 `.env.local`，填入 DashScope API Key。
