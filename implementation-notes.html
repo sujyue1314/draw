@@ -130,8 +130,43 @@
   是否需要限制为最近 N 次（如 20 次）？
 </div>
 
+<h2>PR 3：DashScope API 客户端 + 图片生成/编辑</h2>
+<div class="pr">
+  <strong>状态：</strong> ⏳ PR 已创建，等待合并<br>
+  <strong>PR：</strong> <a href="https://github.com/sujyue1314/draw/pull/1">#1</a><br>
+  <strong>分支：</strong> feat/api-client → main
+</div>
+
+<h3>设计决策</h3>
+
+<div class="decision">
+  <strong>1. 同步端点 vs 异步端点</strong><br>
+  V1.0 踩坑：异步端点有 CORS 问题。V2.0 统一使用同步端点（直接返回结果），避免前端轮询复杂度。
+  图片生成和编辑共用同一个 endpoint，通过 model 字段区分。
+</div>
+
+<div class="decision">
+  <strong>2. editImage 使用 messages 格式</strong><br>
+  V1.0 尝试过 base_image_url 格式（400 错误）。V2.0 使用 messages 格式：
+  <code>content: [{image: url}, {text: prompt}]</code>，这是 wan2.7-image-pro 的正确调用方式。
+</div>
+
+<div class="decision">
+  <strong>3. promptBuilder 独立为 utils</strong><br>
+  prompt 构建逻辑与 API 调用分离。promptBuilder 是纯函数，方便测试和复用。
+  增量编辑（append/delete）有独立的 prompt 构建函数，而非在 executor 中拼接字符串。
+</div>
+
+<h3>未决问题</h3>
+
+<div class="question">
+  <strong>1. imageToBlob 是否需要缓存？</strong><br>
+  每次调用 imageToBlob 都会 fetch 图片并创建新 blob URL。
+  如果同一张图片被多次引用（如撤销/重做），是否需要缓存 blob URL？
+</div>
+
 <hr>
-<p><em>最后更新：PR 2 完成</em></p>
+<p><em>最后更新：PR 3 已创建</em></p>
 
 </body>
 </html>
