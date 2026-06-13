@@ -65,7 +65,8 @@ export function TopBar() {
           onClick={undo}
           disabled={!canUndo}
           className="p-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          title="撤销"
+          aria-label="撤销"
+          aria-disabled={!canUndo}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
@@ -75,7 +76,8 @@ export function TopBar() {
           onClick={redo}
           disabled={!canRedo}
           className="p-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          title="重做"
+          aria-label="重做"
+          aria-disabled={!canRedo}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
@@ -89,16 +91,22 @@ export function TopBar() {
         <div className="relative" ref={ratioRef}>
           <button
             onClick={() => setRatioOpen(!ratioOpen)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setRatioOpen(false); }}
+            aria-haspopup="listbox"
+            aria-expanded={ratioOpen}
+            aria-label={`当前比例 ${canvas.aspectRatio}，点击切换`}
             className="text-xs font-medium text-text-secondary hover:text-text-primary tracking-wider uppercase px-2 py-1 rounded hover:bg-surface-hover transition-colors"
           >
             {canvas.aspectRatio}
           </button>
 
           {ratioOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-panel-bg border border-panel-border rounded-lg shadow-xl py-1 z-50 min-w-[80px]">
+            <div className="absolute right-0 top-full mt-1 bg-panel-bg border border-panel-border rounded-lg shadow-xl py-1 z-50 min-w-[80px]" role="listbox" aria-label="选择画布比例">
               {RATIOS.map((r) => (
                 <button
                   key={r}
+                  role="option"
+                  aria-selected={r === canvas.aspectRatio}
                   onClick={() => handleRatioChange(r)}
                   className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
                     r === canvas.aspectRatio

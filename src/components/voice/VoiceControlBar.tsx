@@ -60,6 +60,8 @@ export function VoiceControlBar() {
       <button
         onClick={toggleListening}
         disabled={isProcessing || isSpeaking}
+        aria-label={isListening ? '停止聆听' : '开始聆听'}
+        aria-pressed={isListening}
         className={`
           relative w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all
           ${isListening ? 'animate-voice-listening' : ''}

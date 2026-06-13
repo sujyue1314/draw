@@ -9,11 +9,19 @@ export function CanvasArea() {
 
   const displayText = interimTranscript || transcript;
 
+  const imageAlt = canvas.objects.length > 0
+    ? `AI 生成的图片：${canvas.objects.map((o) => o.name).join('、')}`
+    : canvas.name;
+
   return (
-    <div className="flex-1 relative flex items-center justify-center bg-canvas-bg min-h-0 overflow-hidden">
+    <div
+      className="flex-1 relative flex items-center justify-center bg-canvas-bg min-h-0 overflow-hidden"
+      role="img"
+      aria-label={canvas.imageUrl ? imageAlt : '空白画布，等待语音指令'}
+    >
       {/* 生成中 Loading 遮罩 */}
       {canvas.isGenerating && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-canvas-bg/80 backdrop-blur-sm">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-canvas-bg/80 backdrop-blur-sm" role="status" aria-label="正在生成图片">
           <div className="w-10 h-10 border-2 border-panel-border border-t-accent rounded-full animate-spin" />
           <p className="mt-4 text-sm text-text-secondary">正在生成...</p>
         </div>
@@ -23,7 +31,9 @@ export function CanvasArea() {
       {canvas.imageUrl ? (
         <img
           src={canvas.imageUrl}
-          alt={canvas.name}
+          alt={imageAlt}
+          width={1440}
+          height={810}
           className="max-w-full max-h-full object-contain"
           draggable={false}
         />
@@ -37,6 +47,7 @@ export function CanvasArea() {
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth={1.5}
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"

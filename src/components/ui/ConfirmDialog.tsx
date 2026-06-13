@@ -14,11 +14,17 @@ export function ConfirmDialog() {
       <div
         className="absolute inset-0 bg-canvas-bg/60 backdrop-blur-sm"
         onClick={cancel}
+        aria-hidden="true"
       />
 
       {/* 对话框 */}
-      <div className="relative bg-panel-bg border border-panel-border rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
-        <p className="text-sm text-text-primary leading-relaxed mb-6">
+      <div
+        className="relative bg-panel-bg border border-panel-border rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+      >
+        <p id="confirm-dialog-title" className="text-sm text-text-primary leading-relaxed mb-6">
           {question}
         </p>
 
@@ -32,6 +38,7 @@ export function ConfirmDialog() {
           <button
             onClick={confirm}
             className="px-4 py-2 text-xs font-medium text-canvas-bg bg-accent hover:bg-accent-dim rounded-lg transition-colors"
+            autoFocus
           >
             确认
           </button>
