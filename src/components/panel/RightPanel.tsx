@@ -3,7 +3,7 @@ import { HistoryList } from './HistoryList';
 
 export function RightPanel() {
   return (
-    <aside className="w-64 border-l border-gray-200 flex flex-col overflow-hidden">
+    <aside className="w-60 bg-panel-bg border-l border-panel-border flex flex-col overflow-hidden shrink-0">
       <ComponentList />
       <HistoryList />
     </aside>
