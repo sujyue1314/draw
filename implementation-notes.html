@@ -132,41 +132,55 @@
 
 <h2>PR 3：DashScope API 客户端 + 图片生成/编辑</h2>
 <div class="pr">
-  <strong>状态：</strong> ⏳ PR 已创建，等待合并<br>
-  <strong>PR：</strong> <a href="https://github.com/sujyue1314/draw/pull/1">#1</a><br>
-  <strong>分支：</strong> feat/api-client → main
+  <strong>状态：</strong> ✅ 已合并<br>
+  <strong>PR：</strong> <a href="https://github.com/sujyue1314/draw/pull/1">#1</a>
 </div>
 
 <h3>设计决策</h3>
 
 <div class="decision">
-  <strong>1. 同步端点 vs 异步端点</strong><br>
-  V1.0 踩坑：异步端点有 CORS 问题。V2.0 统一使用同步端点（直接返回结果），避免前端轮询复杂度。
-  图片生成和编辑共用同一个 endpoint，通过 model 字段区分。
+  <strong>1. 同步端点统一</strong><br>
+  V1.0 踩坑：异步端点有 CORS 问题。V2.0 图片生成和编辑都使用同步端点，通过 model 字段区分（qwen-image-2.0-pro / wan2.7-image-pro）。
 </div>
 
 <div class="decision">
   <strong>2. editImage 使用 messages 格式</strong><br>
-  V1.0 尝试过 base_image_url 格式（400 错误）。V2.0 使用 messages 格式：
-  <code>content: [{image: url}, {text: prompt}]</code>，这是 wan2.7-image-pro 的正确调用方式。
+  V1.0 尝试 base_image_url 格式返回 400。V2.0 使用 <code>content: [{image: url}, {text: prompt}]</code>，这是 wan2.7-image-pro 的正确格式。
+</div>
+
+<h2>PR 4：语音识别 + 语音合成 hooks</h2>
+<div class="pr">
+  <strong>状态：</strong> ⏳ PR 已创建，等待合并<br>
+  <strong>PR：</strong> <a href="https://github.com/sujyue1314/draw/pull/2">#2</a>
+</div>
+
+<h3>设计决策</h3>
+
+<div class="decision">
+  <strong>1. TTS/STT 隔离在 onresult 中检查</strong><br>
+  V1.0 最关键的踩坑：系统 TTS 被 STT 捕获导致循环执行。V2.0 在 recognition.onresult 中检查 isSystemSpeaking，播报中直接忽略所有识别结果。
 </div>
 
 <div class="decision">
-  <strong>3. promptBuilder 独立为 utils</strong><br>
-  prompt 构建逻辑与 API 调用分离。promptBuilder 是纯函数，方便测试和复用。
-  增量编辑（append/delete）有独立的 prompt 构建函数，而非在 executor 中拼接字符串。
+  <strong>2. shouldListen 集中控制</strong><br>
+  shouldListen 作为 voiceStore 中的状态，useVoiceCommand 编排层通过 setShouldListen(false/true) 控制启停。
+  useSpeechRecognition 通过 useEffect 监听 shouldListen 变化自动启停。
+</div>
+
+<div class="decision">
+  <strong>3. 静默检测 2.5 秒</strong><br>
+  每次收到识别结果重置计时器，2.5 秒无语音自动停止。避免持续占用麦克风资源。
 </div>
 
 <h3>未决问题</h3>
 
 <div class="question">
-  <strong>1. imageToBlob 是否需要缓存？</strong><br>
-  每次调用 imageToBlob 都会 fetch 图片并创建新 blob URL。
-  如果同一张图片被多次引用（如撤销/重做），是否需要缓存 blob URL？
+  <strong>1. 识别语言是否需要可配置？</strong><br>
+  当前硬编码 zh-CN。如果用户说英文指令（如 "add a cat"），识别效果可能不佳。是否需要支持语言切换？
 </div>
 
 <hr>
-<p><em>最后更新：PR 3 已创建</em></p>
+<p><em>最后更新：PR 4 已创建</em></p>
 
 </body>
 </html>
