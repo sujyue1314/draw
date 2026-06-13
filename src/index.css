@@ -1,1 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --color-canvas-bg: #0f0f0f;
+  --color-panel-bg: #1a1a1a;
+  --color-panel-border: #2a2a2a;
+  --color-surface: #222222;
+  --color-surface-hover: #2d2d2d;
+  --color-text-primary: #e5e5e5;
+  --color-text-secondary: #888888;
+  --color-text-muted: #555555;
+  --color-accent: #f59e0b;
+  --color-accent-dim: #b45309;
+  --color-status-listen: #22c55e;
+  --color-status-process: #3b82f6;
+  --color-status-speak: #a855f7;
+  --color-danger: #ef4444;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-canvas-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 语音按钮脉冲动效 */
+@keyframes voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
+}
+
+@keyframes voice-listening {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); }
+}
+
+/* 加载渐变遮罩 */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-voice-pulse {
+  animation: voice-pulse 1.5s ease-in-out infinite;
+}
+
+.animate-voice-listening {
+  animation: voice-listening 1.5s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}

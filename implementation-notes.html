@@ -255,7 +255,8 @@
 
 <h2>PR 7：useVoiceCommand 编排层</h2>
 <div class="pr">
-  <strong>状态：</strong> ⏳ PR 已创建，等待合并
+  <strong>状态：</strong> ✅ 已合并到 main<br>
+  <strong>PR：</strong> <a href="https://github.com/sujyue1314/draw/pull/5">#5</a>
 </div>
 
 <h3>设计决策</h3>
@@ -286,8 +287,39 @@
   清除延迟计时器、取消 speechSynthesis、重置 isSystemSpeaking。
 </div>
 
+<h2>PR 8：UI 完善</h2>
+<div class="pr">
+  <strong>状态：</strong> ⏳ PR 已创建，等待合并
+</div>
+
+<h3>设计决策</h3>
+
+<div class="decision">
+  <strong>1. Creative Studio Dark 主题</strong><br>
+  深色画布工作区（#0f0f0f）+ 面板（#1a1a1a）+ 琥珀强调色（#f59e0b）。语音控制条使用琥珀色突出"语音驱动"的核心交互。
+  字体选用 DM Sans（几何感强、不泛用），避免 Inter/Roboto 等通用字体。
+</div>
+
+<div class="decision">
+  <strong>2. 语音状态三色系统</strong><br>
+  绿色=聆听中、蓝色=思考中、紫色=播报中。TopBar、VoiceControlBar、VoiceIndicator 三处统一使用。
+  VoiceControlBar 的麦克风按钮使用 CSS 动画（voice-pulse、voice-listening）表达呼吸感。
+</div>
+
+<div class="decision">
+  <strong>3. VoiceControlBar 集成语音生命周期</strong><br>
+  VoiceControlBar 内部管理 useSpeechRecognition + useVoiceCommand 的完整生命周期。
+  监听 transcript 变化自动触发 handleVoiceCommand，shouldListen 变化自动控制识别启停。
+</div>
+
+<div class="decision">
+  <strong>4. ConfirmDialog 全局覆盖层</strong><br>
+  使用 fixed 定位覆盖全屏，backdrop-blur 半透明遮罩。
+  ConfirmDialog 放在 AppLayout 最外层，由 confirmStore.isOpen 控制显隐。
+</div>
+
 <hr>
-<p><em>最后更新：PR 7 已创建</em></p>
+<p><em>最后更新：PR 8 已创建</em></p>
 
 </body>
 </html>
