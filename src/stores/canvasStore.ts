@@ -92,9 +92,14 @@ export const useCanvasStore = create<CanvasStore>()(
 
       updateCanvas: (patch: Partial<CanvasState>) => {
         set((state) => ({
-          canvases: state.canvases.map((c) =>
-            c.id === state.currentCanvasId ? { ...c, ...patch } : c,
-          ),
+          canvases: state.canvases.map((c) => {
+            if (c.id !== state.currentCanvasId) return c;
+            // 清理旧的 blob URL 防止内存泄漏
+            if (patch.imageUrl !== undefined && c.imageUrl && c.imageUrl.startsWith('blob:')) {
+              URL.revokeObjectURL(c.imageUrl);
+            }
+            return { ...c, ...patch };
+          }),
         }));
       },
 

@@ -1,5 +1,5 @@
 import type { Action, ExecResult, ExecutorCtx } from '../types/commands';
-import type { SceneObject } from '../types/canvas';
+import type { SceneObject, AspectRatio } from '../types/canvas';
 import { planScene } from '../services/qwenLLM';
 import {
   generateImage,
@@ -12,6 +12,10 @@ import {
   buildAppendPrompt,
   buildDeletePrompt,
 } from '../utils/promptBuilder';
+import {
+  withGenerating,
+  findObjectByIdOrName,
+} from '../utils/actionHelpers';
 
 // ── 画布创建防抖 ──────────────────────────────────────────────────────────────
 let lastCanvasCreateAt = 0;
@@ -19,10 +23,6 @@ const CANVAS_DEBOUNCE_MS = 3_000;
 
 // ── 主分发 ────────────────────────────────────────────────────────────────────
 
-/**
- * 按 intent 分发到对应 handler
- * 每个 handler 是 async，返回 { reply }
- */
 export async function executeAction(
   action: Action,
   ctx: ExecutorCtx,
@@ -45,9 +45,9 @@ export async function executeAction(
     case 'redo':
       return handleRedo(ctx);
     case 'create_canvas':
-      return handleCreateCanvas(ctx);
+      return handleCreateCanvas();
     case 'switch_canvas':
-      return handleSwitchCanvas(action, ctx);
+      return handleSwitchCanvas(action);
     case 'query_objects':
       return handleQueryObjects(ctx);
     case 'change_ratio':
@@ -70,22 +70,19 @@ async function handleGenerateImage(
 
   ctx.saveToHistory('生成图片: ' + description);
 
-  // 1. 画面规划
-  const components = await planScene(description);
+  return withGenerating(ctx, async () => {
+    const components = await planScene(description);
+    const objects: SceneObject[] = components.map((c, i) => ({
+      id: Date.now() + i,
+      name: c.name,
+      description: c.description,
+      position: c.position,
+    }));
 
-  // 2. 构建 prompt + 生成图片
-  const objects: SceneObject[] = components.map((c, i) => ({
-    id: Date.now() + i,
-    name: c.name,
-    description: c.description,
-    position: c.position,
-  }));
+    const canvas = ctx.getCanvas();
+    const prompt = buildImagePrompt(description, objects);
+    const size = getSizeFromRatio(canvas.aspectRatio);
 
-  const canvas = ctx.getCanvas();
-  const prompt = buildImagePrompt(description, objects);
-  const size = getSizeFromRatio(canvas.aspectRatio);
-
-  try {
     const remoteUrl = await generateImage(prompt, size);
     const blobUrl = await imageToBlob(remoteUrl);
 
@@ -97,13 +94,10 @@ async function handleGenerateImage(
 
     const names = objects.map((o) => o.name).join('、');
     return { reply: `已生成画面，包含：${names}。` };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { reply: `图片生成失败：${msg}` };
-  }
+  });
 }
 
-// ── 编辑图片（整体风格/背景） ─────────────────────────────────────────────────
+// ── 编辑图片 ──────────────────────────────────────────────────────────────────
 
 async function handleEditImage(
   action: Action,
@@ -120,25 +114,19 @@ async function handleEditImage(
   }
 
   ctx.saveToHistory('编辑图片: ' + prompt);
-  ctx.updateCanvas({ isGenerating: true });
 
-  try {
+  return withGenerating(ctx, async () => {
     const size = getSizeFromRatio(canvas.aspectRatio);
-    const remoteUrl = await editImage(canvas.remoteImageUrl, prompt, size);
+    const remoteUrl = await editImage(canvas.remoteImageUrl!, prompt, size);
     const blobUrl = await imageToBlob(remoteUrl);
 
     ctx.updateCanvas({
       imageUrl: blobUrl,
       remoteImageUrl: remoteUrl,
-      isGenerating: false,
     });
 
     return { reply: '图片已更新。' };
-  } catch (err) {
-    ctx.updateCanvas({ isGenerating: false });
-    const msg = err instanceof Error ? err.message : String(err);
-    return { reply: `图片编辑失败：${msg}` };
-  }
+  });
 }
 
 // ── 增量添加对象 ──────────────────────────────────────────────────────────────
@@ -158,8 +146,8 @@ async function handleAppendObject(
     return { reply: '请告诉我你想添加什么。' };
   }
 
-  // 保存快照 + 更新 objects
   ctx.saveToHistory('添加: ' + objectName);
+
   const newObject: SceneObject = {
     id: Date.now(),
     name: objectName,
@@ -168,27 +156,20 @@ async function handleAppendObject(
   };
   const updatedObjects = [...canvas.objects, newObject];
 
-  ctx.updateCanvas({ isGenerating: true });
-
-  try {
+  return withGenerating(ctx, async () => {
     const prompt = buildAppendPrompt(objectName, description, newObject.position);
     const size = getSizeFromRatio(canvas.aspectRatio);
-    const remoteUrl = await editImage(canvas.remoteImageUrl, prompt, size);
+    const remoteUrl = await editImage(canvas.remoteImageUrl!, prompt, size);
     const blobUrl = await imageToBlob(remoteUrl);
 
     ctx.updateCanvas({
       objects: updatedObjects,
       imageUrl: blobUrl,
       remoteImageUrl: remoteUrl,
-      isGenerating: false,
     });
 
     return { reply: `已添加「${objectName}」到画面中。` };
-  } catch (err) {
-    ctx.updateCanvas({ isGenerating: false });
-    const msg = err instanceof Error ? err.message : String(err);
-    return { reply: `添加失败：${msg}` };
-  }
+  });
 }
 
 // ── 删除对象 ──────────────────────────────────────────────────────────────────
@@ -202,62 +183,39 @@ async function handleDeleteObject(
     return { reply: '当前画布没有图片。' };
   }
 
-  // 匹配对象：优先 objectId，其次 objectName/target
-  const targetId = action.objectId;
-  const targetName = action.objectName ?? action.target ?? '';
-
-  let matched: SceneObject | undefined;
-  if (targetId !== undefined) {
-    matched = canvas.objects.find((o) => o.id === Number(targetId));
-  }
-  if (!matched && targetName) {
-    matched = canvas.objects.find(
-      (o) => o.name === targetName || o.name.includes(targetName),
-    );
-  }
+  const matched = findObjectByIdOrName(
+    canvas.objects,
+    action.objectId,
+    action.objectName ?? action.target,
+  );
 
   if (!matched) {
-    return { reply: `没有找到「${targetName || targetId}」这个组件。` };
+    return { reply: `没有找到「${action.objectName ?? action.target ?? action.objectId}」这个组件。` };
   }
 
   ctx.saveToHistory('删除: ' + matched.name);
-  const remaining = canvas.objects.filter((o) => o.id !== matched!.id);
+  const remaining = canvas.objects.filter((o) => o.id !== matched.id);
 
-  ctx.updateCanvas({ isGenerating: true });
+  return withGenerating(ctx, async () => {
+    const prompt = buildDeletePrompt(remaining);
+    const size = getSizeFromRatio(canvas.aspectRatio);
 
-  try {
+    let remoteUrl: string;
     if (remaining.length === 0) {
-      // 没有剩余对象，重新生成空场景
-      const prompt = buildDeletePrompt([]);
-      const size = getSizeFromRatio(canvas.aspectRatio);
-      const remoteUrl = await generateImage(prompt, size);
-      const blobUrl = await imageToBlob(remoteUrl);
-      ctx.updateCanvas({
-        objects: [],
-        imageUrl: blobUrl,
-        remoteImageUrl: remoteUrl,
-        isGenerating: false,
-      });
+      remoteUrl = await generateImage(prompt, size);
     } else {
-      // 有剩余对象，用 editImage 重建
-      const prompt = buildDeletePrompt(remaining);
-      const size = getSizeFromRatio(canvas.aspectRatio);
-      const remoteUrl = await editImage(canvas.remoteImageUrl, prompt, size);
-      const blobUrl = await imageToBlob(remoteUrl);
-      ctx.updateCanvas({
-        objects: remaining,
-        imageUrl: blobUrl,
-        remoteImageUrl: remoteUrl,
-        isGenerating: false,
-      });
+      remoteUrl = await editImage(canvas.remoteImageUrl!, prompt, size);
     }
+    const blobUrl = await imageToBlob(remoteUrl);
+
+    ctx.updateCanvas({
+      objects: remaining,
+      imageUrl: blobUrl,
+      remoteImageUrl: remoteUrl,
+    });
 
     return { reply: `已删除「${matched.name}」。` };
-  } catch (err) {
-    ctx.updateCanvas({ isGenerating: false });
-    const msg = err instanceof Error ? err.message : String(err);
-    return { reply: `删除失败：${msg}` };
-  }
+  });
 }
 
 // ── 修改对象 ──────────────────────────────────────────────────────────────────
@@ -271,61 +229,40 @@ async function handleModifyObject(
     return { reply: '当前画布没有图片，请先生成一张。' };
   }
 
-  const targetId = action.objectId;
-  const targetName = action.objectName ?? action.target ?? '';
   const newDescription = action.description ?? '';
-
   if (!newDescription) {
     return { reply: '请描述你想如何修改。' };
   }
 
-  // 匹配对象
-  let matched: SceneObject | undefined;
-  if (targetId !== undefined) {
-    matched = canvas.objects.find((o) => o.id === Number(targetId));
-  }
-  if (!matched && targetName) {
-    matched = canvas.objects.find(
-      (o) => o.name === targetName || o.name.includes(targetName),
-    );
-  }
+  const matched = findObjectByIdOrName(
+    canvas.objects,
+    action.objectId,
+    action.objectName ?? action.target,
+  );
 
   if (!matched) {
-    return { reply: `没有找到「${targetName || targetId}」这个组件。` };
+    return { reply: `没有找到「${action.objectName ?? action.target ?? action.objectId}」这个组件。` };
   }
 
   ctx.saveToHistory('修改: ' + matched.name);
-
-  // 更新对象描述
   const updatedObjects = canvas.objects.map((o) =>
-    o.id === matched!.id ? { ...o, description: newDescription } : o,
+    o.id === matched.id ? { ...o, description: newDescription } : o,
   );
 
-  ctx.updateCanvas({ isGenerating: true });
-
-  try {
-    // 用新描述重新生成
+  return withGenerating(ctx, async () => {
     const prompt = buildImagePrompt('the scene', updatedObjects);
     const size = getSizeFromRatio(canvas.aspectRatio);
-
-    let remoteUrl: string;
-    // 如果有图片，用 editImage；否则 generateImage
-    remoteUrl = await editImage(canvas.remoteImageUrl, prompt, size);
+    const remoteUrl = await editImage(canvas.remoteImageUrl!, prompt, size);
     const blobUrl = await imageToBlob(remoteUrl);
 
     ctx.updateCanvas({
       objects: updatedObjects,
       imageUrl: blobUrl,
       remoteImageUrl: remoteUrl,
-      isGenerating: false,
     });
 
     return { reply: `已将「${matched.name}」修改为：${newDescription}。` };
-  } catch (err) {
-    ctx.updateCanvas({ isGenerating: false });
-    const msg = err instanceof Error ? err.message : String(err);
-    return { reply: `修改失败：${msg}` };
-  }
+  });
 }
 
 // ── 复合操作 ──────────────────────────────────────────────────────────────────
@@ -341,7 +278,6 @@ async function handleMultiStep(
 
   const replies: string[] = [];
   for (const op of operations) {
-    // 将 Operation 提升为 Action（Operation 是 Action 的子集）
     const subAction: Action = {
       intent: op.intent,
       target: op.target,
@@ -363,7 +299,7 @@ function handleUndo(ctx: ExecutorCtx): ExecResult {
     return { reply: '没有可以撤销的操作。' };
   }
 
-  // 保存当前状态到 redoStack
+  const snapshot = canvas.undoStack[canvas.undoStack.length - 1];
   const currentSnapshot = {
     timestamp: Date.now(),
     description: '当前状态',
@@ -372,12 +308,8 @@ function handleUndo(ctx: ExecutorCtx): ExecResult {
     remoteImageUrl: canvas.remoteImageUrl,
   };
 
-  // 弹出 undoStack 栈顶
-  const snapshot = canvas.undoStack[canvas.undoStack.length - 1];
-  const newUndoStack = canvas.undoStack.slice(0, -1);
-
   ctx.updateCanvas({
-    undoStack: newUndoStack,
+    undoStack: canvas.undoStack.slice(0, -1),
     redoStack: [...canvas.redoStack, currentSnapshot],
     objects: [...snapshot.objects],
     imageUrl: snapshot.imageUrl,
@@ -395,7 +327,7 @@ function handleRedo(ctx: ExecutorCtx): ExecResult {
     return { reply: '没有可以重做的操作。' };
   }
 
-  // 保存当前状态到 undoStack
+  const snapshot = canvas.redoStack[canvas.redoStack.length - 1];
   const currentSnapshot = {
     timestamp: Date.now(),
     description: '当前状态',
@@ -404,13 +336,9 @@ function handleRedo(ctx: ExecutorCtx): ExecResult {
     remoteImageUrl: canvas.remoteImageUrl,
   };
 
-  // 弹出 redoStack 栈顶
-  const snapshot = canvas.redoStack[canvas.redoStack.length - 1];
-  const newRedoStack = canvas.redoStack.slice(0, -1);
-
   ctx.updateCanvas({
     undoStack: [...canvas.undoStack, currentSnapshot],
-    redoStack: newRedoStack,
+    redoStack: canvas.redoStack.slice(0, -1),
     objects: [...snapshot.objects],
     imageUrl: snapshot.imageUrl,
     remoteImageUrl: snapshot.remoteImageUrl,
@@ -419,35 +347,26 @@ function handleRedo(ctx: ExecutorCtx): ExecResult {
   return { reply: '已重做。' };
 }
 
-// ── 新建画布（3 秒防抖） ─────────────────────────────────────────────────────
+// ── 新建画布 ──────────────────────────────────────────────────────────────────
 
-function handleCreateCanvas(_ctx: ExecutorCtx): ExecResult {
+function handleCreateCanvas(): ExecResult {
   const now = Date.now();
   if (now - lastCanvasCreateAt < CANVAS_DEBOUNCE_MS) {
     return { reply: '操作太频繁，请稍后再试。' };
   }
   lastCanvasCreateAt = now;
-
-  // 由 PR 9 的 canvasStore.createCanvas 处理
-  // 这里只返回 reply，实际创建在编排层调用
   return { reply: '已创建新画布。' };
 }
 
 // ── 切换画布 ──────────────────────────────────────────────────────────────────
 
-function handleSwitchCanvas(
-  action: Action,
-  _ctx: ExecutorCtx,
-): ExecResult {
+function handleSwitchCanvas(action: Action): ExecResult {
   const raw = action.canvasId ?? action.target ?? '';
-  // 提取数字：支持 "画布1"、"1"、"canvas_1" 等格式
   const match = raw.match(/\d+/);
   if (!match) {
     return { reply: '请指定画布编号，例如"切换到画布 1"。' };
   }
-  const n = match[0];
-  // 编排层负责调用 canvasStore.switchCanvas(`canvas_${n}`)
-  return { reply: `已切换到画布 ${n}。` };
+  return { reply: `已切换到画布 ${match[0]}。` };
 }
 
 // ── 查询组件 ──────────────────────────────────────────────────────────────────
@@ -467,19 +386,17 @@ function handleQueryObjects(ctx: ExecutorCtx): ExecResult {
 
 // ── 切换比例 ──────────────────────────────────────────────────────────────────
 
-function handleChangeRatio(
-  action: Action,
-  ctx: ExecutorCtx,
-): ExecResult {
-  const ratio = action.ratio ?? action.target ?? '';
-  const validRatios = ['16:9', '9:16', '1:1', '4:3', '3:4'];
+const VALID_RATIOS: AspectRatio[] = ['16:9', '9:16', '1:1', '4:3', '3:4'];
 
-  if (!validRatios.includes(ratio)) {
-    return { reply: `不支持的比例 ${ratio}。支持：${validRatios.join('、')}。` };
+function handleChangeRatio(action: Action, ctx: ExecutorCtx): ExecResult {
+  const ratio = action.ratio ?? action.target ?? '';
+
+  if (!VALID_RATIOS.includes(ratio as AspectRatio)) {
+    return { reply: `不支持的比例 ${ratio}。支持：${VALID_RATIOS.join('、')}。` };
   }
 
   ctx.saveToHistory('切换比例: ' + ratio);
-  ctx.updateCanvas({ aspectRatio: ratio as import('../types/canvas').AspectRatio });
+  ctx.updateCanvas({ aspectRatio: ratio as AspectRatio });
 
   return { reply: `已切换到 ${ratio} 比例。` };
 }
