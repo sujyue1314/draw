@@ -179,8 +179,42 @@
   当前硬编码 zh-CN。如果用户说英文指令（如 "add a cat"），识别效果可能不佳。是否需要支持语言切换？
 </div>
 
+<h2>PR 5：LLM 指令解析</h2>
+<div class="pr">
+  <strong>状态：</strong> ⏳ PR 已创建，等待合并<br>
+  <strong>PR：</strong> <a href="https://github.com/sujyue1314/draw/pull/3">#3</a>
+</div>
+
+<h3>设计决策</h3>
+
+<div class="decision">
+  <strong>1. 关键词预检测优先于 LLM</strong><br>
+  V1.0 踩坑：ratio 模式（如 "1:1"）被 LLM 误判为 edit_image。V2.0 关键词预检测先于 LLM 调用，比例检测使用正则 \`\d+[:：]\d+\`，优先级最高。
+  这也减少了不必要的 LLM 调用，降低成本和延迟。
+</div>
+
+<div class="decision">
+  <strong>2. planScene 独立函数</strong><br>
+  将画面规划从 parseVoiceCommand 中分离。planScene 专门用于 create_image 时从描述中提取组件列表，
+  返回标准化的 {name, description, position} 结构，供 promptBuilder 使用。
+</div>
+
+<div class="decision">
+  <strong>3. 对话上下文窗口 6 轮</strong><br>
+  LLM 解析时传入最近 6 轮对话作为上下文，支持指代消解（如 "把它改成白色" 中的 "它"）。
+  超过 6 轮会增加 token 消耗且收益递减。
+</div>
+
+<h3>未决问题</h3>
+
+<div class="question">
+  <strong>1. 关键词规则是否需要可扩展？</strong><br>
+  当前 KEYWORD_RULES 是硬编码数组。如果后续需要支持自定义关键词或用户词典，
+  是否需要改为配置化？
+</div>
+
 <hr>
-<p><em>最后更新：PR 4 已创建</em></p>
+<p><em>最后更新：PR 5 已创建</em></p>
 
 </body>
 </html>
