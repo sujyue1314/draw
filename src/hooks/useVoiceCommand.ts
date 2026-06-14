@@ -9,6 +9,27 @@ import type { ExecutorCtx } from '../types/commands';
 
 const PAUSE_AFTER_TTS = 1500; // TTS 结束后延迟 1.5 秒恢复监听
 
+const CHINESE_NUM_MAP: Record<string, string> = {
+  '一': '1', '二': '2', '三': '3', '四': '4', '五': '5',
+  '六': '6', '七': '7', '八': '8', '九': '9', '十': '10',
+  '１': '1', '２': '2', '３': '3', '４': '4', '５': '5',
+  '６': '6', '７': '7', '８': '8', '９': '9', '０': '0',
+};
+
+/** 从文本中提取画布编号（支持中文数字和阿拉伯数字） */
+function extractCanvasNumber(text: string): string | null {
+  // 先尝试阿拉伯数字
+  const digitMatch = text.match(/\d+/);
+  if (digitMatch) return digitMatch[0];
+
+  // 再尝试中文数字
+  for (const [cn, num] of Object.entries(CHINESE_NUM_MAP)) {
+    if (text.includes(cn)) return num;
+  }
+
+  return null;
+}
+
 export function useVoiceCommand() {
   const { speak, cancel } = useSpeechSynthesis();
   const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -100,9 +121,9 @@ export function useVoiceCommand() {
           useCanvasStore.getState().createCanvas();
         } else if (action.intent === 'switch_canvas') {
           const raw = action.canvasId ?? action.target ?? '';
-          const match = raw.match(/\d+/);
-          if (match) {
-            useCanvasStore.getState().switchCanvas(`canvas_${match[0]}`);
+          const canvasNum = extractCanvasNumber(raw);
+          if (canvasNum) {
+            useCanvasStore.getState().switchCanvas(`canvas_${canvasNum}`);
           }
         }
 

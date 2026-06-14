@@ -28,8 +28,13 @@ const KEYWORD_RULES: Array<{
     keywords: ['切换画布', '切换到画布', '切到画布', '换画布', '换到画布', '打开画布'],
     intent: 'switch_canvas',
     extract: (text: string) => {
-      const match = text.match(/画布\s*(\d+)/);
-      return match ? { canvasId: `canvas_${match[1]}` } : {};
+      const cnMap: Record<string, string> = { '一': '1', '二': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '十': '10' };
+      const digitMatch = text.match(/画布\s*(\d+)/);
+      if (digitMatch) return { canvasId: `canvas_${digitMatch[1]}` };
+      for (const [cn, num] of Object.entries(cnMap)) {
+        if (text.includes(`画布${cn}`)) return { canvasId: `canvas_${num}` };
+      }
+      return {};
     },
   },
   {

@@ -183,11 +183,7 @@ async function handleDeleteObject(
     return { reply: '当前画布没有图片。' };
   }
 
-  const matched = findObjectByIdOrName(
-    canvas.objects,
-    action.objectId,
-    action.objectName ?? action.target,
-  );
+  const matched = resolveObject(canvas.objects, action);
 
   if (!matched) {
     return { reply: `没有找到「${action.objectName ?? action.target ?? action.objectId}」这个组件。` };
@@ -234,11 +230,7 @@ async function handleModifyObject(
     return { reply: '请描述你想如何修改。' };
   }
 
-  const matched = findObjectByIdOrName(
-    canvas.objects,
-    action.objectId,
-    action.objectName ?? action.target,
-  );
+  const matched = resolveObject(canvas.objects, action);
 
   if (!matched) {
     return { reply: `没有找到「${action.objectName ?? action.target ?? action.objectId}」这个组件。` };
@@ -291,7 +283,7 @@ async function handleMultiStep(
   return { reply: replies.join(' ') };
 }
 
-// ── 撤销 ──────────────────────────────────────────────────────────────────────
+// ── 撤销（委托 canvasStore） ──────────────────────────────────────────────────
 
 function handleUndo(ctx: ExecutorCtx): ExecResult {
   const canvas = ctx.getCanvas();
@@ -300,6 +292,8 @@ function handleUndo(ctx: ExecutorCtx): ExecResult {
   }
 
   const snapshot = canvas.undoStack[canvas.undoStack.length - 1];
+
+  // 保存当前状态到 redoStack
   const currentSnapshot = {
     timestamp: Date.now(),
     description: '当前状态',
@@ -319,7 +313,7 @@ function handleUndo(ctx: ExecutorCtx): ExecResult {
   return { reply: `已撤销「${snapshot.description}」。` };
 }
 
-// ── 重做 ──────────────────────────────────────────────────────────────────────
+// ── 重做（委托 canvasStore） ──────────────────────────────────────────────────
 
 function handleRedo(ctx: ExecutorCtx): ExecResult {
   const canvas = ctx.getCanvas();
@@ -328,6 +322,8 @@ function handleRedo(ctx: ExecutorCtx): ExecResult {
   }
 
   const snapshot = canvas.redoStack[canvas.redoStack.length - 1];
+
+  // 保存当前状态到 undoStack
   const currentSnapshot = {
     timestamp: Date.now(),
     description: '当前状态',
@@ -399,4 +395,37 @@ function handleChangeRatio(action: Action, ctx: ExecutorCtx): ExecResult {
   ctx.updateCanvas({ aspectRatio: ratio as AspectRatio });
 
   return { reply: `已切换到 ${ratio} 比例。` };
+}
+
+// ── 共享工具 ──────────────────────────────────────────────────────────────────
+
+/**
+ * 统一对象解析：按 objectId → objectName → target 依次尝试
+ */
+function resolveObject(
+  objects: SceneObject[],
+  action: Action,
+): SceneObject | undefined {
+  // 1. 按 objectId 匹配
+  if (action.objectId !== undefined) {
+    const byId = objects.find((o) => o.id === Number(action.objectId));
+    if (byId) return byId;
+  }
+
+  // 2. 按 objectName 匹配
+  const name = action.objectName ?? action.target;
+  if (name) {
+    const byName = findObjectByIdOrName(objects, undefined, name);
+    if (byName) return byName;
+  }
+
+  // 3. 如果 objectId 是序号（1-based），尝试按数组索引匹配
+  if (action.objectId !== undefined) {
+    const index = Number(action.objectId) - 1;
+    if (index >= 0 && index < objects.length) {
+      return objects[index];
+    }
+  }
+
+  return undefined;
 }
