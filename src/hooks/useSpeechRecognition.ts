@@ -30,7 +30,7 @@ declare global {
   }
 }
 
-const SILENCE_TIMEOUT = 2500; // 2.5 秒静默检测
+const SILENCE_TIMEOUT = 5000; // 5 秒静默检测（中文用户常有思考停顿）
 
 export function useSpeechRecognition() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);

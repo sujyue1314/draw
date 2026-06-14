@@ -46,6 +46,16 @@ describe('findObjectByIdOrName', () => {
     expect(result?.name).toBe('小猫');
   });
 
+  it('finds by reverse match (target contains object name)', () => {
+    const result = findObjectByIdOrName(objects, undefined, '那只小猫');
+    expect(result?.name).toBe('小猫');
+  });
+
+  it('finds by reverse match with prefix', () => {
+    const result = findObjectByIdOrName(objects, undefined, '把月亮删了');
+    expect(result?.name).toBe('月亮');
+  });
+
   it('returns undefined when not found', () => {
     const result = findObjectByIdOrName(objects, 99, '不存在');
     expect(result).toBeUndefined();

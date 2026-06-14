@@ -25,7 +25,7 @@ const KEYWORD_RULES: Array<{
     intent: 'create_canvas',
   },
   {
-    keywords: ['切换画布', '切换到画布'],
+    keywords: ['切换画布', '切换到画布', '切到画布', '换画布', '换到画布', '打开画布'],
     intent: 'switch_canvas',
     extract: (text: string) => {
       const match = text.match(/画布\s*(\d+)/);
