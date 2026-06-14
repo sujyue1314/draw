@@ -52,6 +52,26 @@ const KEYWORD_RULES: Array<{
   },
 ];
 
+/** 复合指令连接词 */
+const SPLIT_SEPARATORS = ['然后', '接着', '再', '并且', '同时', '之后', '还要'];
+
+/**
+ * 尝试拆分复合指令
+ * 返回拆分后的子指令文本数组，长度 >= 2 表示是复合指令
+ */
+export function splitCompoundCommand(text: string): string[] {
+  for (const sep of SPLIT_SEPARATORS) {
+    if (text.includes(sep)) {
+      const parts = text
+        .split(sep)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      if (parts.length >= 2) return parts;
+    }
+  }
+  return [text];
+}
+
 /**
  * 关键词预检测（优先于 LLM）
  * 返回 null 表示未命中，需要走 LLM
@@ -141,6 +161,34 @@ export async function parseVoiceCommand(
     return keywordResult;
   }
 
+  // 1.5 复合指令关键词拆分（"加一只猫再加一只狗" → 两个子指令）
+  const parts = splitCompoundCommand(transcript);
+  if (parts.length >= 2) {
+    // 每个子指令单独用关键词检测，全部命中则直接组装
+    const subActions: Action[] = [];
+    let allKeywordHit = true;
+    for (const part of parts) {
+      const hit = detectIntentByKeywords(part);
+      if (hit) {
+        subActions.push(hit);
+      } else {
+        allKeywordHit = false;
+        break;
+      }
+    }
+    if (allKeywordHit && subActions.length >= 2) {
+      return {
+        intent: 'multi_step_edit',
+        operations: subActions.map((a) => ({
+          intent: a.intent,
+          target: a.target,
+          description: a.description,
+          objectName: a.objectName,
+        })),
+      };
+    }
+  }
+
   // 2. 构建对话上下文
   const messages = [
     { role: 'system' as const, content: SYSTEM_PROMPT },
@@ -190,18 +238,38 @@ export async function planScene(
       role: 'system' as const,
       content: `你是一个画面规划器。根据用户的绘图描述，提取需要创建的组件列表。
 
-输出严格 JSON 格式：
+## 输出格式
+
+严格输出 JSON：
 {
   "objects": [
     { "name": "组件名", "description": "英文描述（用于图片生成）", "position": "位置" }
   ]
 }
 
-位置可选值：center, left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
+## 位置可选值
 
-示例：
+center, left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
+
+## 位置推断规则
+
+根据中文空间关系词推断位置：
+- "坐在/站在/在...上" → 如果是物体表面（桌子、月亮），被坐物体 center，坐者 center
+- "在左边/右侧" → left / right
+- "在上面/天空中" → top
+- "在下面/地上" → bottom
+- "旁边/旁边有" → 根据前一个物体的位置选邻近位置
+- "远处/背景" → top 或 top-left/top-right
+- "前景/前面" → bottom 或 center
+- 无明确位置描述 → 根据常识推断（如"天空"→top，"地面"→bottom）
+
+## 示例
+
 用户说"一只猫坐在月亮上"
-输出：{"objects": [{"name": "猫", "description": "a cute cat sitting", "position": "center"}, {"name": "月亮", "description": "a glowing moon", "position": "top"}]}`,
+→ {"objects": [{"name": "猫", "description": "a cute cat sitting on the moon", "position": "center"}, {"name": "月亮", "description": "a glowing full moon", "position": "center"}]}
+
+用户说"一只猫坐在月亮上，旁边有一棵树，背景是星空"
+→ {"objects": [{"name": "猫", "description": "a cute cat sitting on the moon", "position": "center"}, {"name": "月亮", "description": "a glowing full moon", "position": "center"}, {"name": "树", "description": "a tall tree", "position": "right"}, {"name": "星空", "description": "a starry night sky background", "position": "top"}]}`,
     },
     { role: 'user' as const, content: description },
   ];
