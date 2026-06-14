@@ -68,7 +68,12 @@ async function handleGenerateImage(
     return { reply: '请描述你想生成的画面。' };
   }
 
-  ctx.saveToHistory('生成图片: ' + description);
+  const canvas = ctx.getCanvas();
+
+  // 只在画布已有图片时保存快照（首次生成不保存，作为基线）
+  if (canvas.imageUrl || canvas.objects.length > 0) {
+    ctx.saveToHistory('生成图片: ' + description);
+  }
 
   return withGenerating(ctx, async () => {
     const components = await planScene(description);
@@ -79,7 +84,6 @@ async function handleGenerateImage(
       position: c.position,
     }));
 
-    const canvas = ctx.getCanvas();
     const prompt = buildImagePrompt(description, objects);
     const size = getSizeFromRatio(canvas.aspectRatio);
 
@@ -117,7 +121,8 @@ async function handleEditImage(
 
   return withGenerating(ctx, async () => {
     const size = getSizeFromRatio(canvas.aspectRatio);
-    const remoteUrl = await editImage(canvas.remoteImageUrl!, prompt, size);
+    const editPrompt = `${prompt}. Keep everything else unchanged.`;
+    const remoteUrl = await editImage(canvas.remoteImageUrl!, editPrompt, size);
     const blobUrl = await imageToBlob(remoteUrl);
 
     ctx.updateCanvas({
@@ -237,15 +242,19 @@ async function handleModifyObject(
   }
 
   ctx.saveToHistory('修改: ' + matched.name);
-  const updatedObjects = canvas.objects.map((o) =>
-    o.id === matched.id ? { ...o, description: newDescription } : o,
-  );
+
+  // 用 editImage 的增量修改方式：只描述变化，不重建整个场景
+  const modifyPrompt = `Change the ${matched.name} to ${newDescription}. Keep everything else exactly the same.`;
 
   return withGenerating(ctx, async () => {
-    const prompt = buildImagePrompt('the scene', updatedObjects);
     const size = getSizeFromRatio(canvas.aspectRatio);
-    const remoteUrl = await editImage(canvas.remoteImageUrl!, prompt, size);
+    const remoteUrl = await editImage(canvas.remoteImageUrl!, modifyPrompt, size);
     const blobUrl = await imageToBlob(remoteUrl);
+
+    // 更新对象描述
+    const updatedObjects = canvas.objects.map((o) =>
+      o.id === matched.id ? { ...o, description: newDescription } : o,
+    );
 
     ctx.updateCanvas({
       objects: updatedObjects,
@@ -283,7 +292,7 @@ async function handleMultiStep(
   return { reply: replies.join(' ') };
 }
 
-// ── 撤销（委托 canvasStore） ──────────────────────────────────────────────────
+// ── 撤销 ──────────────────────────────────────────────────────────────────────
 
 function handleUndo(ctx: ExecutorCtx): ExecResult {
   const canvas = ctx.getCanvas();
@@ -293,7 +302,6 @@ function handleUndo(ctx: ExecutorCtx): ExecResult {
 
   const snapshot = canvas.undoStack[canvas.undoStack.length - 1];
 
-  // 保存当前状态到 redoStack
   const currentSnapshot = {
     timestamp: Date.now(),
     description: '当前状态',
@@ -313,7 +321,7 @@ function handleUndo(ctx: ExecutorCtx): ExecResult {
   return { reply: `已撤销「${snapshot.description}」。` };
 }
 
-// ── 重做（委托 canvasStore） ──────────────────────────────────────────────────
+// ── 重做 ──────────────────────────────────────────────────────────────────────
 
 function handleRedo(ctx: ExecutorCtx): ExecResult {
   const canvas = ctx.getCanvas();
@@ -323,7 +331,6 @@ function handleRedo(ctx: ExecutorCtx): ExecResult {
 
   const snapshot = canvas.redoStack[canvas.redoStack.length - 1];
 
-  // 保存当前状态到 undoStack
   const currentSnapshot = {
     timestamp: Date.now(),
     description: '当前状态',
