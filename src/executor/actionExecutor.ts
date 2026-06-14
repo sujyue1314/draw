@@ -400,26 +400,26 @@ function handleChangeRatio(action: Action, ctx: ExecutorCtx): ExecResult {
 // ── 共享工具 ──────────────────────────────────────────────────────────────────
 
 /**
- * 统一对象解析：按 objectId → objectName → target 依次尝试
+ * 统一对象解析：按 objectName → objectId 精确 → objectId 序号 依次尝试
  */
 function resolveObject(
   objects: SceneObject[],
   action: Action,
 ): SceneObject | undefined {
-  // 1. 按 objectId 匹配
-  if (action.objectId !== undefined) {
-    const byId = objects.find((o) => o.id === Number(action.objectId));
-    if (byId) return byId;
-  }
-
-  // 2. 按 objectName 匹配
+  // 1. 按 objectName/target 模糊匹配（最可靠）
   const name = action.objectName ?? action.target;
   if (name) {
     const byName = findObjectByIdOrName(objects, undefined, name);
     if (byName) return byName;
   }
 
-  // 3. 如果 objectId 是序号（1-based），尝试按数组索引匹配
+  // 2. 按 objectId 精确匹配（实际 id）
+  if (action.objectId !== undefined) {
+    const byId = objects.find((o) => o.id === Number(action.objectId));
+    if (byId) return byId;
+  }
+
+  // 3. 按 objectId 作为 1-based 序号匹配（LLM 常返回 "1" 表示第一个）
   if (action.objectId !== undefined) {
     const index = Number(action.objectId) - 1;
     if (index >= 0 && index < objects.length) {

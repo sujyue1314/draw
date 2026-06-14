@@ -14,12 +14,20 @@ export function VoiceControlBar() {
   const { handleVoiceCommand } = useVoiceCommand();
 
   const lastTranscriptRef = useRef('');
+  const commandLockRef = useRef(false);
 
   // 监听 transcript 变化，触发指令处理
   useEffect(() => {
-    if (transcript && transcript !== lastTranscriptRef.current) {
+    if (transcript && transcript !== lastTranscriptRef.current && !commandLockRef.current) {
       lastTranscriptRef.current = transcript;
-      handleVoiceCommand(transcript);
+      commandLockRef.current = true;
+      handleVoiceCommand(transcript).finally(() => {
+        // 延迟解锁，防止 TTS 播报期间 STT 捕获同一条指令
+        setTimeout(() => {
+          commandLockRef.current = false;
+          lastTranscriptRef.current = '';
+        }, 2000);
+      });
     }
   }, [transcript, handleVoiceCommand]);
 
