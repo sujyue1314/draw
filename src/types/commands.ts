@@ -1,4 +1,4 @@
-/** 12 个 intent + unknown */
+/** 13 个 intent + unknown */
 export type Intent =
   | 'create_image'
   | 'edit_image'
@@ -12,6 +12,7 @@ export type Intent =
   | 'switch_canvas'
   | 'query_objects'
   | 'change_ratio'
+  | 'help'
   | 'unknown';
 
 /** 复合操作中的单个操作 */

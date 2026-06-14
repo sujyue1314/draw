@@ -9,6 +9,10 @@ const KEYWORD_RULES: Array<{
   extract?: (text: string) => Partial<Action>;
 }> = [
   {
+    keywords: ['帮助', '帮助我', '你能做什么', '怎么用', '怎么操作', '指令', '命令'],
+    intent: 'help',
+  },
+  {
     keywords: ['撤销', '撤回', '回退'],
     intent: 'undo',
   },

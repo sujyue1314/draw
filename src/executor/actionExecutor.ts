@@ -52,8 +52,12 @@ export async function executeAction(
       return handleQueryObjects(ctx);
     case 'change_ratio':
       return handleChangeRatio(action, ctx);
+    case 'help':
+      return handleHelp();
     default:
-      return { reply: '抱歉，我没有理解你的指令，请再说一次。' };
+      return {
+        reply: '抱歉，我没有理解你的指令。你可以说"帮助"查看所有可用指令，或者说"生成一只小猫"开始创作。',
+      };
   }
 }
 
@@ -402,6 +406,25 @@ function handleChangeRatio(action: Action, ctx: ExecutorCtx): ExecResult {
   ctx.updateCanvas({ aspectRatio: ratio as AspectRatio });
 
   return { reply: `已切换到 ${ratio} 比例。` };
+}
+
+// ── 帮助 ──────────────────────────────────────────────────────────────────────
+
+function handleHelp(): ExecResult {
+  return {
+    reply:
+      '你可以这样对我说：' +
+      '生成一只小猫，画一座山——生成图片；' +
+      '加一只小鸟，右边加棵树——添加元素；' +
+      '把猫改成白色——修改元素；' +
+      '删除月亮——删除元素；' +
+      '把背景改成夜晚——整体编辑；' +
+      '撤销、重做——回退或前进；' +
+      '新建画布、切换到画布二——管理画布；' +
+      '现在有哪些组件——查看元素；' +
+      '一比一、十六比九——切换比例；' +
+      '或者直接说帮我画一个太空场景，我会自动规划。',
+  };
 }
 
 // ── 共享工具 ──────────────────────────────────────────────────────────────────
