@@ -281,16 +281,45 @@ async function handleMultiStep(
     return { reply: '复合操作为空。' };
   }
 
+  // 保存复合操作前的快照（用于整体回滚）
+  const canvas = ctx.getCanvas();
+  const preSnapshot = {
+    objects: [...canvas.objects],
+    imageUrl: canvas.imageUrl,
+    remoteImageUrl: canvas.remoteImageUrl,
+  };
+
   const replies: string[] = [];
-  for (const op of operations) {
+  let failedAt = -1;
+
+  for (let i = 0; i < operations.length; i++) {
+    const op = operations[i];
     const subAction: Action = {
       intent: op.intent,
       target: op.target,
       description: op.description,
       objectName: op.objectName,
     };
-    const result = await executeAction(subAction, ctx);
-    replies.push(result.reply);
+    try {
+      const result = await executeAction(subAction, ctx);
+      replies.push(result.reply);
+    } catch (err) {
+      failedAt = i;
+      replies.push(`第${i + 1}步失败：${err instanceof Error ? err.message : '未知错误'}`);
+      break;
+    }
+  }
+
+  // 如果有步骤失败，回滚到操作前状态
+  if (failedAt >= 0) {
+    ctx.updateCanvas({
+      objects: preSnapshot.objects,
+      imageUrl: preSnapshot.imageUrl,
+      remoteImageUrl: preSnapshot.remoteImageUrl,
+    });
+    return {
+      reply: `复合操作在第${failedAt + 1}步失败，已回滚。${replies.join(' ')}`,
+    };
   }
 
   return { reply: replies.join(' ') };
